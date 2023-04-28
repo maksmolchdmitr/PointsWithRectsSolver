@@ -2,3 +2,10 @@
 *.iml
 /.idea
 /out
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/compiler.xml
+RectsWithPoints.iml
+/.idea/uiDesigner.xml
+/.idea/vcs.xml
+/.idea/workspace.xml
