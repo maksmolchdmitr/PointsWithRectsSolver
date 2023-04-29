@@ -123,7 +123,7 @@ final class CompressCoords implements Solver {
     @Override
     public int getPointRectsCount(Point point) {
         Optional<Point> optionalPoint = findMappedPoint(point);
-        if(optionalPoint.isEmpty()) return 0;
+        if (optionalPoint.isEmpty()) return 0;
         Point mappedPoint = optionalPoint.get();
         return map[mappedPoint.x()][mappedPoint.y()];
     }
@@ -186,6 +186,78 @@ final class CoordsCompressor {
     }
 }
 
+class LazyPersistentSegmentTree {
+    private final Node root;
+    private final int depth;
+
+    protected static class Node {
+        public int value;
+        public int modify;
+        public Node left = null, right = null;
+    }
+
+    public LazyPersistentSegmentTree(int size) {
+        this.depth = (int) Math.ceil(Math.log(size) / Math.log(2));
+        this.root = new Node();
+    }
+
+    public void add(Integer value, Integer left, Integer right) {
+        add(value, left, right, root, 0, (1 << depth) - 1);
+    }
+
+    private void add(Integer addedValue, Integer l, Integer r, Node x, int lx, int rx) {
+
+        if (lx == rx) {
+            if (l > rx || r < lx) {
+                return;
+            }
+            x.modify += addedValue;
+            return;
+        }
+        if (l > rx || r < lx) {
+            return;
+        } else if (lx >= l && rx <= r) {
+            x.modify += addedValue;
+        } else {
+            int middle = (lx + rx) / 2;
+            if (x.left == null)
+                x.left = new Node();
+            if (x.right == null)
+                x.right = new Node();
+            add(addedValue, l, r, x.left, lx, middle);
+            add(addedValue, l, r, x.right, middle + 1, rx);
+        }
+    }
+
+    public int get(int i) {
+        int lx = 0, rx = (1 << depth) - 1, middle, inheritance;
+        Node curX = root;
+        while (lx != rx) {
+            curX.value += curX.modify;
+            inheritance = curX.modify;
+            curX.modify = 0;
+            middle = (lx + rx) / 2;
+            if (curX.right == null) {
+                curX.right = new Node();
+            }
+            curX.right.modify += inheritance;
+            if (curX.left == null) {
+                curX.left = new Node();
+            }
+            curX.left.modify += inheritance;
+            if (i > middle) {
+                curX = curX.right;
+                lx = middle + 1;
+            } else {
+                curX = curX.left;
+                rx = middle;
+            }
+        }
+        curX.value += curX.modify;
+        curX.modify = 0;
+        return curX.value;
+    }
+}
 
 
 
