@@ -1,3 +1,5 @@
+import lombok.Getter;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.*;
@@ -188,80 +190,122 @@ final class CoordsCompressor {
 
 class LazyPersistentSegmentTree {
     private final Node root;
+
+    @Getter
+    public static class Node {
+        private int modify;
+
+        public Node() {
+            this.modify = 0;
+            this.right = null;
+            this.left = null;
+        }
+
+        public Node(int modify, Node left, Node right) {
+            this.modify = modify;
+            this.left = left;
+            this.right = right;
+        }
+
+        private Node left, right;
+
+        public Node clone() {
+            return new Node(this.modify, this.left, this.right);
+        }
+
+        public Node(int modify) {
+            this.modify = modify;
+        }
+    }
+
     private final int depth;
 
-    protected static class Node {
-        public int value;
-        public int modify;
-        public Node left = null, right = null;
+    public int getDepth() {
+        return depth;
     }
 
-    public LazyPersistentSegmentTree(int size) {
-        this.depth = (int) Math.ceil(Math.log(size) / Math.log(2));
-        this.root = new Node();
+    public LazyPersistentSegmentTree(int length) {
+        this.depth = (int) Math.ceil(Math.log(length) / Math.log(2));
+        this.root = new Node(0, null, null);
     }
 
-    public void add(Integer value, Integer left, Integer right) {
-        add(value, left, right, root, 0, (1 << depth) - 1);
-    }
-
-    private void add(Integer addedValue, Integer l, Integer r, Node x, int lx, int rx) {
-
-        if (lx == rx) {
-            if (l > rx || r < lx) {
-                return;
-            }
-            x.modify += addedValue;
-            return;
-        }
-        if (l > rx || r < lx) {
-            return;
-        } else if (lx >= l && rx <= r) {
-            x.modify += addedValue;
-        } else {
-            int middle = (lx + rx) / 2;
-            if (x.left == null)
-                x.left = new Node();
-            if (x.right == null)
-                x.right = new Node();
-            add(addedValue, l, r, x.left, lx, middle);
-            add(addedValue, l, r, x.right, middle + 1, rx);
-        }
+    private LazyPersistentSegmentTree(Node root, int depth) {
+        this.root = root;
+        this.depth = depth;
     }
 
     public int get(int i) {
-        int lx = 0, rx = (1 << depth) - 1, middle, inheritance;
-        Node curX = root;
-        while (lx != rx) {
-            curX.value += curX.modify;
-            inheritance = curX.modify;
-            curX.modify = 0;
-            middle = (lx + rx) / 2;
-            if (curX.right == null) {
-                curX.right = new Node();
-            }
-            curX.right.modify += inheritance;
-            if (curX.left == null) {
-                curX.left = new Node();
-            }
-            curX.left.modify += inheritance;
-            if (i > middle) {
-                curX = curX.right;
-                lx = middle + 1;
-            } else {
-                curX = curX.left;
-                rx = middle;
-            }
+        return get(this.root, i, 0, (int) (Math.pow(2, depth) - 1));
+    }
+
+    private int get(Node node, Integer index, int lNode, int rNode) {
+        if (lNode == rNode && lNode == index) {
+            return node.modify;
         }
-        curX.value += curX.modify;
-        curX.modify = 0;
-        return curX.value;
+        int middle = (lNode + rNode) / 2;
+        int inheritance = node.modify;
+        if (node.left == null) {
+            node.left = new Node(inheritance);
+        } else {
+            node.left.modify += inheritance;
+        }
+        if (node.right == null) {
+            node.right = new Node(inheritance);
+        } else {
+            node.right.modify += inheritance;
+        }
+        node.modify = 0;
+        if (index <= middle) {
+            return get(node.left, index, lNode, middle);
+        } else {
+            return get(node.right, index, middle + 1, rNode);
+        }
+    }
+
+    public LazyPersistentSegmentTree add(int value, int l, int r) {
+        LazyPersistentSegmentTree newTree = new LazyPersistentSegmentTree(this.root.clone(), depth);
+        add(newTree.root, value, l, r, 0, (int) (Math.pow(2, depth) - 1));
+        return newTree;
+    }
+
+    private void add(Node node, final Integer value, final Integer l, final Integer r, int lNode, int rNode) {
+        if (l <= lNode && r >= rNode) {
+            node.modify += value;
+            return;
+        }
+        int middle = (lNode + rNode) / 2;
+        if (r > middle && l <= middle) {
+            if (node.left == null) {
+                node.left = new Node();
+            } else {
+                node.left = node.left.clone();
+            }
+            if (node.right == null) {
+                node.right = new Node();
+            } else {
+                node.right = node.right.clone();
+            }
+            add(node.left, value, l, r, lNode, middle);
+            add(node.right, value, l, r, middle + 1, rNode);
+        }
+        if (r <= middle) {
+            if (node.left == null) {
+                node.left = new Node();
+            } else {
+                node.left = node.left.clone();
+            }
+            add(node.left, value, l, r, lNode, middle);
+        }
+        if (l > middle) {
+            if (node.right == null) {
+                node.right = new Node();
+            } else {
+                node.right = node.right.clone();
+            }
+            add(node.right, value, l, r, middle + 1, rNode);
+        }
     }
 }
-
-
-
-
 
 
 
