@@ -64,4 +64,75 @@ class LazyPersistentSegmentTreeTest {
         IntStream.range(25, 51).forEach(i -> assertEquals(value+value2, tree3.get(i)));
         IntStream.range(51, 100).forEach(i -> assertEquals(value2, tree3.get(i)));
     }
+
+    @Test
+    void veryMuchTreeVersionTest(){
+        LazyPersistentSegmentTree tree = new LazyPersistentSegmentTree(100);
+        int value = 123;
+        int value2 = 596;
+        LazyPersistentSegmentTree tree1 = tree.add(value, 0, 50);
+        LazyPersistentSegmentTree tree3 = tree1.add(value2, 25, 99);
+        IntStream.range(0, 25).forEach(i -> assertEquals(value, tree3.get(i), "Tree3.get(%d)=%d!".formatted(i, tree3.get(i))));
+        IntStream.range(25, 51).forEach(i -> assertEquals(value+value2, tree3.get(i)));
+        IntStream.range(51, 100).forEach(i -> assertEquals(value2, tree3.get(i)));
+    }
+
+    @Test
+    void versionsTest(){
+        LazyPersistentSegmentTree tree = new LazyPersistentSegmentTree(10);
+        int value1 = 123;
+        int value2 = 596;
+        int value3 = 2458;
+        LazyPersistentSegmentTree tree1 = tree.add(value1, 0, 5);
+        LazyPersistentSegmentTree tree2 = tree1.add(value2, 0, 9);
+        LazyPersistentSegmentTree tree3 = tree2.add(value3, 3, 9);
+
+        IntStream.range(0, 6).forEach(i -> assertEquals(value1, tree1.get(i)));
+        IntStream.range(6, 10).forEach(i -> assertEquals(0, tree1.get(i)));
+
+        IntStream.range(0, 6).forEach(i -> assertEquals(value1+value2, tree2.get(i)));
+        IntStream.range(6, 10).forEach(i -> assertEquals(value2, tree2.get(i)));
+
+        IntStream.range(0, 3).forEach(i -> assertEquals(value1+value2, tree3.get(i)));
+        IntStream.range(3, 6).forEach(i -> assertEquals(value1+value2+value3, tree3.get(i)));
+        IntStream.range(6, 10).forEach(i -> assertEquals(value2+value3, tree3.get(i)));
+    }
+
+    @Test
+    void fourVersionTest(){
+        LazyPersistentSegmentTree tree = new LazyPersistentSegmentTree(4);
+        LazyPersistentSegmentTree tree1 = tree.add(1, 0, 0);
+        IntStream.range(0, 1).forEach(i -> assertEquals(1, tree1.get(i)));
+        IntStream.range(1, 4).forEach(i -> assertEquals(0, tree1.get(i)));
+
+        LazyPersistentSegmentTree tree2 = tree1.add(1, 0, 1);
+        IntStream.range(0, 1).forEach(i -> assertEquals(2, tree2.get(i)));
+        IntStream.range(1, 2).forEach(i -> assertEquals(1, tree2.get(i)));
+        IntStream.range(2, 4).forEach(i -> assertEquals(0, tree2.get(i)));
+
+        LazyPersistentSegmentTree tree3 = tree2.add(1, 0, 2);
+        IntStream.range(0, 1).forEach(i -> assertEquals(3, tree3.get(i)));
+        IntStream.range(1, 2).forEach(i -> assertEquals(2, tree3.get(i)));
+        IntStream.range(2, 3).forEach(i -> assertEquals(1, tree3.get(i)));
+        IntStream.range(3, 4).forEach(i -> assertEquals(0, tree3.get(i)));
+
+        LazyPersistentSegmentTree tree4 = tree3.add(1, 0, 3);
+        IntStream.range(0, 1).forEach(i -> assertEquals(4, tree4.get(i)));
+        IntStream.range(1, 2).forEach(i -> assertEquals(3, tree4.get(i)));
+        IntStream.range(2, 3).forEach(i -> assertEquals(2, tree4.get(i)));
+        IntStream.range(3, 4).forEach(i -> assertEquals(1, tree4.get(i)));
+    }
+
+    @Test
+    void fourVersionSimpleTest(){
+        LazyPersistentSegmentTree tree = new LazyPersistentSegmentTree(4);
+        LazyPersistentSegmentTree tree4 = tree.add(1, 0, 0)
+                .add(1, 0, 1)
+                .add(1, 0, 2)
+                .add(1, 0, 3);
+        IntStream.range(0, 1).forEach(i -> assertEquals(4, tree4.get(i)));
+        IntStream.range(1, 2).forEach(i -> assertEquals(3, tree4.get(i)));
+        IntStream.range(2, 3).forEach(i -> assertEquals(2, tree4.get(i)));
+        IntStream.range(3, 4).forEach(i -> assertEquals(1, tree4.get(i)));
+    }
 }

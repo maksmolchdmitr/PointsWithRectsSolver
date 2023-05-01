@@ -1,12 +1,10 @@
-import lombok.Getter;
-
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.*;
 
 public class Main {
     public static void main(String[] args) {
-        Writer.write(new Scanner(System.in), new PrintWriter(System.out), new CompressCoords());
+        Writer.write(new Scanner(System.in), new PrintWriter(System.out), new LazySegmentTreeSolver());
     }
 }
 
@@ -188,10 +186,106 @@ final class CoordsCompressor {
     }
 }
 
+// Lazy segment tree solver
+
+class LazySegmentTreeSolver implements Solver {
+    private List<Integer> coordsX = new ArrayList<>(), coordsY = new ArrayList<>();
+    private final List<LazyPersistentSegmentTree> map = new ArrayList<>();
+
+    @Override
+    public void preprocessData(List<Rectangle> rects) {
+        if (rects.size() == 0) return;
+
+        CoordsCompressor.compress(rects, coordsX, coordsY);
+        coordsX = CoordsCompressor.removeUniqueValues(coordsX);
+        coordsY = CoordsCompressor.removeUniqueValues(coordsY);
+
+        LazyPersistentSegmentTree tree = new LazyPersistentSegmentTree(coordsY.size() - 1);
+
+        List<Wall> walls = getWalls(rects);
+        walls.sort(Comparator.comparingInt(Wall::x));
+        Integer predX = null;
+        for (Wall wall : walls) {
+            int down = findMappedIndex(coordsY, wall.down);
+            int up = findMappedIndex(coordsY, wall.up) - 1;
+            if (up == -2) up = coordsY.size() - 2;
+            tree = tree.add(wall.isOpened ? 1 : -1, down, up);
+            if (predX != null && predX.equals(wall.x)) {
+                map.set(map.size() - 1, tree);
+//                System.out.printf("Inc x:%d, [%d;%d]\n", wall.x, down, up);
+            } else {
+//                System.out.printf("Inc x:%d, [%d;%d]\n", wall.x, down, up);
+                map.add(tree);
+            }
+//            System.out.println("Tree = " + map.get(map.size() - 1));
+            predX = wall.x;
+        }
+    }
+
+    @Override
+    public int getPointRectsCount(Point point) {
+        Optional<Point> optionalPoint = findMappedPoint(point);
+        if (optionalPoint.isEmpty()) return 0;
+        Point mappedPoint = optionalPoint.get();
+        return map.get(mappedPoint.x()).get(mappedPoint.y());
+    }
+
+    private Optional<Point> findMappedPoint(Point point) {
+        int x = findMappedIndex(coordsX, point.x());
+        int y = findMappedIndex(coordsY, point.y());
+        if (x == -1 || y == -1) return Optional.empty();
+        return Optional.of(new Point(x, y));
+    }
+
+    private static int findMappedIndex(List<Integer> coords, int value) {
+        if (value == coords.get(0)) return 0;
+        if (value < coords.get(0) ||
+                value > coords.get(coords.size() - 1) ||
+                value == coords.get(coords.size() - 1)) return -1;
+        if (value < coords.get(1)) return 0;
+        return binaryFind(0, coords.size() - 1, value, coords);
+    }
+
+    private static int binaryFind(int l, int r, final Integer value, final List<Integer> arr) {
+        if (r - l <= 1) {
+            if (value.equals(arr.get(r))) return r;
+            if (value.equals(arr.get(l))) return l;
+            return l;
+        }
+        int middle = (l + r) / 2;
+        if (value > arr.get(middle)) {
+            return binaryFind(middle, r, value, arr);
+        }
+        if (value < arr.get(middle)) {
+            return binaryFind(l, middle, value, arr);
+        }
+        return middle;
+    }
+
+    private record Wall(int x, int down, int up, boolean isOpened) {
+    }
+
+    private List<Wall> getWalls(List<Rectangle> rects) {
+        List<Wall> res = new ArrayList<>();
+        for (Rectangle rect : rects) {
+            res.add(new Wall(rect.leftDown().x(), rect.leftDown().y(), rect.rightUp().y(), true));
+            res.add(new Wall(rect.rightUp().x(), rect.leftDown().y(), rect.rightUp().y(), false));
+        }
+        return res;
+    }
+}
+
 class LazyPersistentSegmentTree {
     private final Node root;
 
-    @Getter
+    @Override
+    public String toString() {
+        return "LazyPersistentSegmentTree{" +
+                "root=" + root +
+                ", depth=" + depth +
+                '}';
+    }
+
     public static class Node {
         private int modify;
 
@@ -215,6 +309,15 @@ class LazyPersistentSegmentTree {
 
         public Node(int modify) {
             this.modify = modify;
+        }
+
+        @Override
+        public String toString() {
+            return "Node{" +
+                    "modify=" + modify +
+                    ", left=" + left +
+                    ", right=" + right +
+                    '}';
         }
     }
 
@@ -247,12 +350,12 @@ class LazyPersistentSegmentTree {
         if (node.left == null) {
             node.left = new Node(inheritance);
         } else {
-            node.left.modify += inheritance;
+            node.left = new Node(node.left.modify + inheritance, node.left.left, node.left.right);
         }
         if (node.right == null) {
             node.right = new Node(inheritance);
         } else {
-            node.right.modify += inheritance;
+            node.right = new Node(node.right.modify + inheritance, node.right.left, node.right.right);
         }
         node.modify = 0;
         if (index <= middle) {
